@@ -86,7 +86,11 @@ class Calibration(object):
         # Rotation from reference camera coord to rect camera coord
         self.R0 = calibs['R0_rect']
         self.R0 = np.reshape(self.R0,[3,3])
-
+        # Transformation from imu to velodyne
+        self.I2V = calibs['Tr_imu_to_velo']
+        self.I2V = np.reshape(self.I2V, [3,4])
+        self.I2V = np.vstack([self.I2V, np.array([0,0,0,1])])
+        
         # Camera intrinsics and extrinsics
         self.c_u = self.P[0,2]              
         self.c_v = self.P[1,2]
