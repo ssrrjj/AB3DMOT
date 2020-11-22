@@ -13,7 +13,7 @@ type_whitelist = ['Car', 'Pedestrian', 'Cyclist']
 score_threshold = -10000
 width = 1242
 height = 374
-seq_list = ['0000', '0003']
+seq_list = ['0006']
 
 def vis(result_sha, data_root, result_root):
 	def show_image_with_boxes(img, objects_res, object_gt, calib, save_path, height_threshold=0):
@@ -33,7 +33,7 @@ def vis(result_sha, data_root, result_root):
 	
 	for seq in seq_list:
 		image_dir = os.path.join(data_root, 'image_02/%s' % seq)
-		calib_file = os.path.join(data_root, 'calib/%s.txt' % seq)
+		calib_file = os.path.join('./data/KITTI/resources/training', 'calib/%s.txt' % seq)
 		result_dir = os.path.join(result_root, '%s/trk_withid/%s' % (result_sha, seq))
 		save_3d_bbox_dir = os.path.join(result_dir, '../../trk_image_vis/%s' % seq); mkdir_if_missing(save_3d_bbox_dir)
 
@@ -77,7 +77,7 @@ if __name__ == "__main__":
 
 	result_root = './results'
 	result_sha = sys.argv[1]
-	if 'val' in result_sha: data_root = './data/KITTI/resources/training'
+	if 'val' in result_sha: data_root = '/teams/CSE291_FA20_J00/team1/training/'
 	elif 'test' in result_sha: data_root = './data/KITTI/resources/testing'
 	else:
 		print("wrong split!")
