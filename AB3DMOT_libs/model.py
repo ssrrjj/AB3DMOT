@@ -7,6 +7,64 @@ from scipy.optimize import linear_sum_assignment
 from AB3DMOT_libs.bbox_utils import convert_3dbox_to_8corner, iou3d
 from AB3DMOT_libs.kalman_filter import KalmanBoxTracker
 from oxt_utils import *
+def three_stage_association(dets_8corner, detections, trackers, trks_8corner):
+    # detections: 8 corners and similarity n x 72
+    # trackers: [KalmanBoxTracker]
+
+    # first stage
+    # threshold_1 = 0.99
+    # matches, unmatched_detections, unmatched_trackers = associate_detections_to_trackers(dets_8corner, trks_8corner, threshold_1)
+    # unmatched_detections = list(unmatched_detections)
+    # unmatched_trackers = list(unmatched_trackers)
+
+    #skip stage 1 to test stage 2
+    matches = np.empty((0, 2),dtype=int)
+    unmatched_detections = list(np.arange(len(detections)))
+    unmatched_trackers = list(range(len(trackers)))
+
+    #second stage
+    
+    threshold_2 = 0
+    matched_trk = []
+    for trk_idx in unmatched_trackers:
+        best_det = -1
+        best_fas = -np.inf
+        for det_idx in unmatched_detections:
+            fas = trackers[trk_idx].compute_FAS(detections[det_idx])
+            if fas > best_fas:
+                best_fas = fas
+                best_det = det_idx
+        if best_fas > threshold_2:
+            matched_trk.append(trk_idx)
+            matches = np.vstack([matches, [best_det, trk_idx]])
+            # unmatched_detections = list(unmatched_detections)
+            unmatched_detections.remove(best_det)
+            # unmatched_detections = np.array(unmatched_detections)
+    # unmatched_trackers = list(unmatched_trackers)
+    for trk in matched_trk:
+        unmatched_trackers.remove(trk)
+    # unmatched_trackers = np.array(unmatched_trackers)
+
+    # third stage
+    if unmatched_trackers and unmatched_detections:
+        detections_3 = dets_8corner[unmatched_detections]
+        trackers_3 = trks_8corner[unmatched_trackers]
+        matches_3, unmatched_detections_3, unmatched_trackers_3 = associate_detections_to_trackers(detections_3, trackers_3)
+        for match in matches_3:
+            det_idx = unmatched_detections[match[0]]
+            trk_idx = unmatched_trackers[match[1]]
+            matches = np.vstack([matches, [det_idx, trk_idx]])
+        if unmatched_detections_3:
+            unmatched_detections = unmatched_detections[unmatched_detections_3]
+        else:
+            unmatched_detections = []
+        if unmatched_trackers_3:
+            unmatched_trackers = unmatched_trackers[unmatched_trackers_3]
+        else:
+            unmatched_trackers = []
+    return matches, np.array(unmatched_detections), np.array(unmatched_trackers)
+
+
 def associate_detections_to_trackers(detections, trackers, iou_threshold=0.01):   
 	"""
 	Assigns detections to tracked object (both represented as bounding boxes)
@@ -77,7 +135,7 @@ class AB3DMOT(object):			  # A baseline of 3D multi-object tracking
         T_w_imu, I2V = dets_all['T_w_imu'], dets_all['I2V']
         # reorder the data to put x,y,z in front to be compatible with the state transition matrix
         # where the constant velocity model is defined in the first three rows of the matrix
-        dets = dets[:, self.reorder]					# reorder the data to [[x,y,z,theta,l,w,h], ...]
+        dets[:,:7] = dets[:, self.reorder]					# reorder the data to [[x,y,z,theta,l,w,h], ...]
         self.frame_count += 1
         
         trks = np.zeros((len(self.trackers), 7))         # N x 7 , # get predicted locations from existing trackers.
@@ -86,7 +144,7 @@ class AB3DMOT(object):			  # A baseline of 3D multi-object tracking
 #         print("predict positions:")
         for t, trk in enumerate(trks):
             pos = self.trackers[t].predict().reshape((-1, 1))
-            pos[:3] = w_to_cam(pos[:3].reshape(1,3), T_w_imu, I2V).reshape(3,1)
+            # pos[:3] = w_to_cam(pos[:3].reshape(1,3), T_w_imu, I2V).reshape(3,1)
 #             print(self.trackers[t].id, pos.reshape(10))
             trk[:] = [pos[0], pos[1], pos[2], pos[3], pos[4], pos[5], pos[6]]       
             if (np.any(np.isnan(pos))): 
@@ -96,15 +154,16 @@ class AB3DMOT(object):			  # A baseline of 3D multi-object tracking
         for t in reversed(to_del): 
             self.trackers.pop(t)
         
-        dets_8corner = [convert_3dbox_to_8corner(det_tmp) for det_tmp in dets]
+        dets_8corner = [convert_3dbox_to_8corner(det_tmp) for det_tmp in dets[:7]]
         if len(dets_8corner) > 0: dets_8corner = np.stack(dets_8corner, axis=0)
         else: dets_8corner = []
         trks_8corner = [convert_3dbox_to_8corner(trk_tmp) for trk_tmp in trks]
         if len(trks_8corner) > 0: trks_8corner = np.stack(trks_8corner, axis=0)
-        matched, unmatched_dets, unmatched_trks = associate_detections_to_trackers(dets_8corner, trks_8corner)
-        
+        #matched, unmatched_dets, unmatched_trks = associate_detections_to_trackers(dets_8corner, trks_8corner)
+
+        matched, unmatched_dets, unmatched_trks = three_stage_association(dets_8corner, dets[:,7:], self.trackers, trks_8corner)
         # update matched trackers with assigned detections
-        dets[:,:3] = cam_to_w(dets[:,:3], T_w_imu, I2V)
+        # dets[:,:3] = cam_to_w(dets[:,:3], T_w_imu, I2V)
         for t, trk in enumerate(self.trackers):
             if t not in unmatched_trks:
                 d = matched[np.where(matched[:, 1] == t)[0], 0]     # a list of index
@@ -121,7 +180,7 @@ class AB3DMOT(object):			  # A baseline of 3D multi-object tracking
             d = d[self.reorder_back]			# change format from [x,y,z,theta,l,w,h] to [h,w,l,x,y,z,theta]
 
             if ((trk.time_since_update < self.max_age) and (trk.hits >= self.min_hits or self.frame_count <= self.min_hits)):
-                d[3:6] = w_to_cam(d[3:6].reshape(1,3), T_w_imu, I2V)[0]
+                # d[3:6] = w_to_cam(d[3:6].reshape(1,3), T_w_imu, I2V)[0]
                 ret.append(np.concatenate((d, [trk.id + 1], trk.info)).reshape(1, -1)) # +1 as MOT benchmark requires positive
             i -= 1
 

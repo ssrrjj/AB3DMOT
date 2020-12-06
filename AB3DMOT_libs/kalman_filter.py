@@ -9,11 +9,13 @@ class KalmanBoxTracker(object):
     This class represents the internel state of individual tracked objects observed as bbox.
     """
     count = 0
-    def __init__(self, bbox3D, info):
+    def __init__(self, bbox3D_and_feature, info):
         """
         Initialises a tracker using initial bounding box.
         """
         # define constant velocity model
+        bbox3D = bbox3D_and_feature[:7]
+        feature = bbox3D_and_feature[7:]
         self.kf = KalmanFilter(dim_x=10, dim_z=7)       
         self.kf.F = np.array([[1,0,0,0,0,0,0,1,0,0],      # state transition matrix
                               [0,1,0,0,0,0,0,0,1,0],
@@ -77,11 +79,32 @@ class KalmanBoxTracker(object):
         self.age = 0
         self.info = info        # other info associated
 
-    def update(self, bbox3D, info): 
+        self.max_history = 15
+        self.appear_history = [feature]
+        self.score_history = [1]
+
+    def compute_FAS(self, det_feature):
+        score_sum = 0
+        fas = 0
+        if len(self.score_history) == 0:
+            return 1
+            
+        for i, appear in enumerate(self.appear_history):
+            scorei = self.score_history[i]
+        
+            score_sum += scorei
+            fas += scorei * np.sum(appear*det_feature)/np.linalg.norm(appear)/np.linalg.norm(det_feature)
+        fas = fas/score_sum
+        return fas
+
+
+    def update(self, bbox3D_and_feature, info): 
         """ 
         Updates the state vector with observed bbox.
         """
 #         print("update tracker",self.id,"at", self.kf.x.reshape(-1), "with", bbox3D.reshape(-1))
+
+        bbox3D = bbox3D_and_feature[:7]
         self.time_since_update = 0
         self.history = []
         self.hits += 1
@@ -116,6 +139,14 @@ class KalmanBoxTracker(object):
         if self.kf.x[3] >= np.pi: self.kf.x[3] -= np.pi * 2    # make the theta still in the rage
         if self.kf.x[3] < -np.pi: self.kf.x[3] += np.pi * 2
         self.info = info
+
+        #compute score
+        score = self.compute_FAS(bbox3D_and_feature[7:])
+        self.score_history.append(score)
+        self.appear_history.append(bbox3D_and_feature[7:])
+        if len(self.score_history) > self.max_history:
+            self.score_history = self.score_history[1:]
+            self.appear_history = self.appear_history[1:]
 
     def predict(self):       
         """

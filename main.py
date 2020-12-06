@@ -12,6 +12,7 @@ from AB3DMOT_libs.kitti_utils import Calibration
 
 
 if __name__ == '__main__':
+    print("main")
     if len(sys.argv) != 2:
         print('Usage: python main.py result_sha(e.g., pointrcnn_Car_test)')
         sys.exit(1)
@@ -38,7 +39,7 @@ if __name__ == '__main__':
         
         mot_tracker = AB3DMOT(max_age = 10) 
         seq_dets = np.loadtxt(seq_file, delimiter=',')          # load detections, N x 15
-
+        
         # if no detection in a sequence
         if len(seq_dets.shape) == 1: seq_dets = np.expand_dims(seq_dets, axis=0) 	
         if seq_dets.shape[1] == 0:
@@ -65,10 +66,9 @@ if __name__ == '__main__':
 
             
             dets = seq_dets[seq_dets[:,0] == frame, 7:14]            # h, w, l, x, y, z, theta in camera coordinate follwing KITTI convention
-#             print(len(dets), "Objects in frame", frame)
-#             for det in dets:
-#                 print(det[3:6])
-#             print("-----------")
+            dets_sim = seq_dets[seq_dets[:,0] == frame, 15:] 
+            dets = np.hstack([dets, dets_sim])
+            
             #transform to world coordinate
             #dets[:,3:6] = cam_to_w(dets[:,3:6], oxts[frame].T_w_imu, calib.I2V)
             
