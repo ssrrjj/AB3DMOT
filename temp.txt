@@ -1,0 +1,4 @@
+’’’For tracking evaluation: To to evaluation:
+convert our csv results to correct format. Use ‘python convert.py dectection_results_dir save_dir’. The txt files will be stored in ./results/save_dir. For example, python convert.py /team1/codes/3dObjDet/OpenPCDet_ravi/output_wk6_res/demos_pkl/pointrcnn_ours/training pointrcnn_ours will store txt files in ./results/printrcnn_ours/{Car, Pedestrian, Cyclist}.
+Generate tracking result. ‘python main.py txt_dir’. For example, python main.py pointrcnn_ours/Car
+Do evaluation. e.g python evaluation/evaluate_kitti3dmot.py  pointrcnn_ours/Car will do evaluation for our pointrcnn car tracking results.

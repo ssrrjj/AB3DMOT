@@ -13,7 +13,8 @@ type_whitelist = ['Car', 'Pedestrian', 'Cyclist']
 score_threshold = -10000
 width = 1242
 height = 374
-seq_list = ['%04d'%i for i in range(10, 11)]
+# seq_list = ['0006']
+seq_list = seqs = ["%04d"%i for i in range(21)]
 
 def vis(result_sha, data_root, result_root):
 	def show_image_with_boxes(img, objects_res, object_gt, calib, save_path, height_threshold=0):
@@ -32,10 +33,10 @@ def vis(result_sha, data_root, result_root):
 		img.save(save_path)
 	
 	for seq in seq_list:
-		image_dir = os.path.join(data_root, './results/trk_gt/%s' % seq)
+		image_dir = os.path.join(data_root, 'image_02/%s' % seq)
 		calib_file = os.path.join('./data/KITTI/resources/training', 'calib/%s.txt' % seq)
 		result_dir = os.path.join(result_root, '%s/trk_withid/%s' % (result_sha, seq))
-		save_3d_bbox_dir = os.path.join(result_dir, '../../trk_gt_vis/%s' % seq); mkdir_if_missing(save_3d_bbox_dir)
+		save_3d_bbox_dir = os.path.join(result_dir, '../../trk_image_vis/%s' % seq); mkdir_if_missing(save_3d_bbox_dir)
 
 		# load the list
 		images_list, num_images = load_list_from_folder(image_dir)
@@ -77,6 +78,13 @@ if __name__ == "__main__":
 
 	result_root = './results'
 	result_sha = sys.argv[1]
-	data_root = '/team1/codes/3dObjDet/OpenPCDet_ravi/data/kitti-odometry/training/'
-	data_root = ''
+	# if 'val' in result_sha: data_root = '/teams/CSE291_FA20_J00/team1/training/'
+	# if 'val' in result_sha: data_root = '/team1/codes/3dObjDet/OpenPCDet_ravi/data/kitti-odometry'
+	# elif 'test' in result_sha: data_root = './data/KITTI/resources/testing'
+	data_root = '/team1/codes/3dObjDet/OpenPCDet_ravi/data/kitti-odometry/training/'	
+
+	# else:
+	# 	print("wrong split!")
+	# 	sys.exit(1)
+
 	vis(result_sha, data_root, result_root)

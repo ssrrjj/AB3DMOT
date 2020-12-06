@@ -1,6 +1,7 @@
 import csv
 import numpy as np
 import os
+import sys
 
 def convert(from_file, to_file, object_id):
     text = []
@@ -28,13 +29,14 @@ def convert(from_file, to_file, object_id):
 if __name__=='__main__':
     get_object_id = {'Pedestrian': 2, 'Car': 1, 'Cyclist': 3}
     from_dir = sys.argv[1]
-    to_dir = sys.argv[2]
+    
+    to_dir = os.path.join("./data/KITTI", sys.argv[2])
     for obj in get_object_id.keys():
         for i in range(21):
             from_file = os.path.join(from_dir, "%04d/%04d.csv" % (i, i))
             to_file = os.path.join(to_dir, "%s/%04d.txt" % (obj, i))
-            if not os.path.exists(to_dir):
-                os.makedirs(to_dir)
+            if not os.path.exists(os.path.join(to_dir, obj)):
+                os.makedirs(os.path.join(to_dir,obj))
             if not os.path.exists(from_file):
                 print("can't find file",from_file)
                 continue
